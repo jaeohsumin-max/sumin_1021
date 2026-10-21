@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>영화 설명서</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: #14161c;
+      color: #f2f2f2;
+    }
+    header { padding: 20px 16px; background: #1f2230; text-align: center; }
+    header h1 { margin: 0; font-size: 26px; }
+    header p { margin: 6px 0 0; color: #aab; font-size: 14px; }
+
+    form { display: flex; gap: 8px; max-width: 640px; margin: 16px auto; padding: 0 16px; }
+    input {
+      flex: 1; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid #3a3f52; background: #1f2230; color: #fff; font-size: 16px;
+    }
+    button {
+      padding: 12px 18px; border: 0; border-radius: 10px;
+      background: #e5a823; color: #14161c; font-weight: 700; font-size: 16px; cursor: pointer;
+    }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 0 16px 40px; }
+    #msg { color: #ff8a80; min-height: 1em; }
+    h2 { font-size: 20px; margin: 16px 0 12px; }
+
+    /* 검색 결과 목록 */
+    #results {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+    }
+    .card { background: #1f2230; border-radius: 10px; overflow: hidden; cursor: pointer; transition: transform .15s; }
+    .card:hover { transform: translateY(-4px); }
+    .card img, .noimg { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; background: #2a2e3d; }
+    .noimg { display: flex; align-items: center; justify-content: center; color: #888; font-size: 13px; }
+    .card .info { padding: 8px 10px 10px; }
+    .card .name { font-weight: 700; font-size: 14px; }
+    .card .meta { font-size: 12px; color: #aaa; margin-top: 4px; }
+
+    /* 영화 설명 화면 */
+    #detail { display: none; background: #1f2230; border-radius: 14px; overflow: hidden; margin-bottom: 20px; }
+    #detail .backdrop { width: 100%; height: 220px; object-fit: cover; display: block; opacity: .55; }
+    #detail .body { display: flex; gap: 20px; padding: 18px; flex-wrap: wrap; }
+    #detail .poster { width: 180px; border-radius: 10px; margin-top: -90px; position: relative; box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+    #detail .text { flex: 1; min-width: 240px; }
+    #detail h3 { margin: 0; font-size: 24px; }
+    #detail .original { color: #99a; font-size: 14px; margin-top: 2px; }
+    #detail .tagline { color: #e5a823; font-style: italic; margin: 10px 0 0; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+    .tag { background: #2a2e3d; border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+    .row { margin: 8px 0; line-height: 1.6; }
+    .row b { color: #e5a823; margin-right: 6px; }
+    .overview { line-height: 1.7; color: #d6d6de; white-space: pre-line; }
+    .cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px; }
+    .cast div { text-align: center; font-size: 12px; color: #ccc; }
+    .cast img, .cast .noface { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; background: #2a2e3d; display: block; margin-bottom: 4px; }
+    .trailer { display: inline-block; margin-top: 12px; color: #14161c; background: #e5a823; padding: 8px 14px; border-radius: 8px; text-decoration: none; font-weight: 700; }
+
+    footer { text-align: center; font-size: 12px; color: #777; padding: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎬 영화 설명서</h1>
+    <p>영화 제목을 검색하고, 궁금한 영화를 눌러보세요</p>
+  </header>
+
+  <form id="searchForm">
+    <input id="query" placeholder="영화 제목 (예: 인터스텔라)" />
+    <button type="submit">검색</button>
+  </form>
+
+  <main>
+    <p id="msg"></p>
+    <section id="detail"></section>
+    <h2 id="heading">지금 인기 있는 영화</h2>
+    <div id="results"></div>
+  </main>
+
+  <footer>This product uses the TMDB API but is not endorsed or certified by TMDB.</footer>
+
+  <!-- TMDB 키는 Vercel 환경변수에 있어요. 브라우저는 /api/tmdb 만 불러요 -->
+  <script>
+    const IMG = "https://image.tmdb.org/t/p/";   // 이미지 주소 = IMG + 크기 + poster_path
+
+    const $ = (id) => document.getElementById(id);
+
+    // ── TMDB 요청 공통 함수 ─────────────────────────
+    async function tmdb(path, params = {}) {
+      if (typeof TMDB_API_KEY === "undefined" || TMDB_API_KEY.includes("여기에")) {
+        throw new Error("config.js 에 TMDB API 키를 넣어주세요.");
+      }
+      const url = new URL(BASE + path);
+      url.searchParams.set("api_key", TMDB_API_KEY);
+      url.searchParams.set("language", "ko-KR");
+      for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+
+      const res = await fetch(url);
+      if (res.status === 401) throw new Error("API 키가 올바르지 않아요. config.js 를 확인해주세요.");
+      if (!res.ok) throw new Error("TMDB 요청 실패 (" + res.status + ")");
+      return res.json();
+    }
+
+    // ── 검색 결과(포스터 카드) 그리기 ────────────────
+    function renderList(movies, title) {
+      $("heading").textContent = title;
+      const box = $("results");
+      box.innerHTML = "";
+      $("msg").textContent = movies.length ? "" : "결과가 없어요. 다른 제목으로 찾아보세요.";
+
+      for (const m of movies) {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = m.poster_path
+          ? `<img loading="lazy" src="${IMG}w342${m.poster_path}" alt="">`
+          : `<div class="noimg">포스터 없음</div>`;
+
+        const info = document.createElement("div");
+        info.className = "info";
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = m.title;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = ((m.release_date || "").slice(0, 4) || "연도 미상") +
+                           " · ⭐ " + (m.vote_average ? m.vote_average.toFixed(1) : "-");
+        info.append(name, meta);
+        card.appendChild(info);
+
+        card.addEventListener("click", () => showDetail(m.id));
+        box.appendChild(card);
+      }
+    }
+
+    // ── 영화 하나의 상세 설명 ────────────────────────
+    async function showDetail(id) {
+      try {
+        $("msg").textContent = "불러오는 중...";
+        // 한 번의 요청으로 상세정보 + 출연진(credits) + 예고편(videos)을 같이 받기
+        const m = await tmdb(`/movie/${id}`, {
+          append_to_response: "credits,videos",
+          include_video_language: "ko,en",
+        });
+
+        // 한국어 줄거리가 비어 있으면 영어 줄거리로 대신
+        let overview = m.overview;
+        if (!overview) {
+          const en = await tmdb(`/movie/${id}`, { language: "en-US" });
+          overview = en.overview ? "(한국어 줄거리가 없어 영어로 보여드려요)\n" + en.overview : "줄거리 정보가 없어요.";
+        }
+
+        const director = (m.credits?.crew || []).filter(c => c.job === "Director").map(c => c.name).join(", ") || "정보 없음";
+        const cast = (m.credits?.cast || []).slice(0, 8);
+        const trailer = (m.videos?.results || []).find(v => v.site === "YouTube" && v.type === "Trailer");
+        const runtime = m.runtime ? `${Math.floor(m.runtime / 60)}시간 ${m.runtime % 60}분` : "정보 없음";
+
+        const d = $("detail");
+        d.innerHTML = `
+          ${m.backdrop_path ? `<img class="backdrop" src="${IMG}w1280${m.backdrop_path}" alt="">` : ""}
+          <div class="body">
+            ${m.poster_path ? `<img class="poster" src="${IMG}w342${m.poster_path}" alt="">` : ""}
+            <div class="text">
+              <h3 id="dTitle"></h3>
+              <div class="original" id="dOriginal"></div>
+              <p class="tagline" id="dTagline"></p>
+              <div class="tags" id="dTags"></div>
+              <div class="row"><b>개봉</b><span id="dDate"></span></div>
+              <div class="row"><b>상영시간</b>${runtime}</div>
+              <div class="row"><b>평점</b>⭐ ${m.vote_average ? m.vote_average.toFixed(1) : "-"} / 10 (${m.vote_count}명)</div>
+              <div class="row"><b>감독</b><span id="dDirector"></span></div>
+              <div class="row"><b>줄거리</b></div>
+              <div class="overview" id="dOverview"></div>
+              ${trailer ? `<a class="trailer" target="_blank" href="https://www.youtube.com/watch?v=${trailer.key}">▶ 예고편 보기</a>` : ""}
+            </div>
+          </div>
+          ${cast.length ? `<div style="padding:0 18px 18px"><div class="row"><b>주요 출연진</b></div><div class="cast" id="dCast"></div></div>` : ""}
+        `;
+
+        // 글자는 textContent 로 넣어요 (안전하게)
+        $("dTitle").textContent = m.title;
+        $("dOriginal").textContent = m.original_title !== m.title ? m.original_title : "";
+        $("dTagline").textContent = m.tagline || "";
+        $("dDate").textContent = m.release_date || "정보 없음";
+        $("dDirector").textContent = director;
+        $("dOverview").textContent = overview;
+        for (const g of m.genres) {
+          const t = document.createElement("span");
+          t.className = "tag";
+          t.textContent = g.name;
+          $("dTags").appendChild(t);
+        }
+        for (const p of cast) {
+          const div = document.createElement("div");
+          div.innerHTML = p.profile_path
+            ? `<img loading="lazy" src="${IMG}w185${p.profile_path}" alt="">`
+            : `<div class="noface"></div>`;
+          const t = document.createElement("span");
+          t.textContent = p.name + (p.character ? ` (${p.character})` : "");
+          div.appendChild(t);
+          $("dCast").appendChild(div);
+        }
+
+        d.style.display = "block";
+        $("msg").textContent = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch (e) {
+        $("msg").textContent = e.message;
+      }
+    }
+
+    // ── 검색 / 첫 화면 ──────────────────────────────
+    async function search(q) {
+      try {
+        const data = await tmdb("/search/movie", { query: q });
+        renderList(data.results, `"${q}" 검색 결과`);
+      } catch (e) {
+        $("msg").textContent = e.message;
+      }
+    }
+
+    async function loadPopular() {
+      try {
+        const data = await tmdb("/movie/popular");
+        renderList(data.results, "지금 인기 있는 영화");
+      } catch (e) {
+        $("msg").textContent = e.message;
+      }
+    }
+
+    $("searchForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const q = $("query").value.trim();
+      if (q) search(q);
+    });
+
+    loadPopular();
+  </script>
+</body>
+</html>
