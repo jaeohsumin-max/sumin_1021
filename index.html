@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>오늘 시간 알려 주는 버튼</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+    font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;background:#fff8ee;color:#3a2b22;text-align:center;padding:16px}
+  button{font:inherit;font-size:1.5rem;padding:16px 36px;border:0;border-radius:999px;background:#ff8a1f;color:#3a2b22;cursor:pointer}
+  button:active{transform:scale(.97)}
+  #result{font-size:1.6rem;min-height:2.4em;line-height:1.5}
+</style>
+</head>
+<body>
+  <button id="btn" type="button">지금 몇 시예요?</button>
+  <p id="result" aria-live="polite">버튼을 눌러 보세요.</p>
+
+  <script>
+    document.getElementById('btn').addEventListener('click', function () {
+      var now = new Date();
+      // 내 컴퓨터의 날짜와 시간을 한국어로 보여 줘요
+      var text = now.toLocaleString('ko-KR', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+        hour: 'numeric', minute: '2-digit', second: '2-digit'
+      });
+      document.getElementById('result').textContent = '오늘은 ' + text + ' 이에요.';
+    });
+  </script>
+</body>
+</html>
