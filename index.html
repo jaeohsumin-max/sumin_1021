@@ -92,20 +92,21 @@
 
     const $ = (id) => document.getElementById(id);
 
-    // ── TMDB 요청 공통 함수 ─────────────────────────
+    // ── TMDB 요청 공통 함수 (우리 Vercel 함수 /api/tmdb 를 거쳐요) ──
     async function tmdb(path, params = {}) {
-      if (typeof TMDB_API_KEY === "undefined" || TMDB_API_KEY.includes("여기에")) {
-        throw new Error("config.js 에 TMDB API 키를 넣어주세요.");
-      }
-      const url = new URL(BASE + path);
-      url.searchParams.set("api_key", TMDB_API_KEY);
+      const url = new URL("/api/tmdb", location.origin);
+      url.searchParams.set("path", path);
       url.searchParams.set("language", "ko-KR");
       for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
       const res = await fetch(url);
-      if (res.status === 401) throw new Error("API 키가 올바르지 않아요. config.js 를 확인해주세요.");
-      if (!res.ok) throw new Error("TMDB 요청 실패 (" + res.status + ")");
-      return res.json();
+      if (res.status === 404 && location.port) {
+        throw new Error("Live Server 에서는 /api 가 안 돌아요. Vercel 에 배포한 주소로 열어주세요.");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) throw new Error("Vercel 에 넣은 TMDB 키가 올바르지 않아요.");
+      if (!res.ok) throw new Error(data.error || data.status_message || "요청 실패 (" + res.status + ")");
+      return data;
     }
 
     // ── 검색 결과(포스터 카드) 그리기 ────────────────

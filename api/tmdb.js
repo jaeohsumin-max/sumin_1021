@@ -1,9 +1,9 @@
 // Vercel 서버리스 함수: 브라우저 대신 TMDB 를 불러줘요.
 // 키는 Vercel 환경변수(Settings → Environment Variables)에서 읽어요. 브라우저에는 키가 절대 안 보여요.
 module.exports = async (req, res) => {
-  const key = process.env.TMDB_API_KEY || process.env.TMDB_KEY || process.env.MOVIE_API_KEY;
+  const key = process.env.MOVIE;   // Vercel 환경변수 이름: MOVIE
   if (!key) {
-    return res.status(500).json({ error: "Vercel 환경변수에 TMDB_API_KEY 가 없어요." });
+    return res.status(500).json({ error: "Vercel 환경변수 MOVIE 가 없어요. 넣은 뒤 Redeploy 해주세요." });
   }
 
   const { path, ...params } = req.query;
