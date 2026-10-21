@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오름 길잡이</title>
+<style>
+  :root {
+    --orange: #ff8a22;
+    --orange-dark: #e8770f;
+    --orange-soft: #ffb36b;
+    --cream: #fffaf2;
+    --cream-2: #fff3e0;
+    --bubble-bot: #fff0dd;
+    --line: #f1dcc0;
+    --text: #3a2a1a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e8ecf1;
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+  }
+  .app {
+    width: 100%;
+    max-width: 500px;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    border-radius: 28px 28px 0 0;
+    overflow: hidden;
+    box-shadow: 0 0 24px rgba(0,0,0,.08);
+  }
+
+  /* 헤더 */
+  header {
+    background: var(--orange);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 18px 10px 18px 12px;
+  }
+  .back { background: none; border: 0; color: #3a2a1a; font-size: 26px; cursor: pointer; padding: 0 2px; }
+  .logo {
+    width: 52px; height: 52px; border-radius: 12px; background: #fff;
+    display: grid; place-items: center; font-size: 34px; flex-shrink: 0;
+  }
+  header h1 { flex: 1; margin: 0; text-align: center; font-size: 28px; font-weight: 800; letter-spacing: 1px; }
+  .head-btns { display: flex; gap: 6px; }
+  .head-btn {
+    background: var(--orange-soft); color: #3a2a1a; border: 0; border-radius: 14px;
+    padding: 14px 14px; font-size: 17px; font-weight: 700; cursor: pointer;
+  }
+  .head-btn.icon { padding: 14px 12px; }
+
+  /* 소개 */
+  details.about { background: var(--cream-2); border-bottom: 1px solid var(--line); }
+  details.about summary {
+    list-style: none; cursor: pointer; padding: 18px 22px;
+    font-size: 20px; font-weight: 800; color: var(--orange-dark);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  details.about summary::-webkit-details-marker { display: none; }
+  details.about summary::after { content: "▼"; font-size: 12px; transition: transform .2s; }
+  details.about[open] summary::after { transform: rotate(180deg); }
+  details.about p { margin: 0; padding: 0 22px 18px; line-height: 1.6; font-size: 15px; }
+
+  /* 채팅 */
+  #chat { flex: 1; overflow-y: auto; padding: 26px 20px; display: flex; flex-direction: column; gap: 22px; }
+  .msg { max-width: 78%; padding: 16px 22px; border-radius: 24px; font-size: 19px; line-height: 1.55; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+  .bot { align-self: flex-start; background: var(--bubble-bot); border: 2px solid var(--line); }
+  .user { align-self: flex-end; background: var(--orange); color: #fff; border-bottom-right-radius: 6px; }
+  .bot.error { background: #fdecec; border-color: #f4c2c2; color: #8a2020; }
+  .typing span { display: inline-block; width: 8px; height: 8px; margin: 0 3px; border-radius: 50%; background: var(--orange); animation: blink 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* 빠른 버튼 */
+  .quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 14px 14px; background: #fff; border-bottom: 1px solid #e5e5e5; }
+  .quick button {
+    background: #fff; border: 2px solid var(--orange); color: var(--orange-dark); border-radius: 16px;
+    padding: 10px 6px; font-size: 18px; font-weight: 700; cursor: pointer; line-height: 1.35; min-height: 78px;
+  }
+  .quick button:hover { background: var(--cream-2); }
+
+  /* 입력 */
+  form.input { display: flex; gap: 12px; padding: 14px 16px 18px; background: #fff; }
+  form.input input {
+    flex: 1; min-width: 0; border: 2px solid var(--line); border-radius: 18px; padding: 0 22px;
+    font-size: 20px; height: 76px; outline: none; color: var(--text);
+  }
+  form.input input:focus { border-color: var(--orange); }
+  form.input button {
+    background: var(--orange); color: #fff; border: 0; border-radius: 18px; width: 126px;
+    font-size: 22px; font-weight: 800; cursor: pointer;
+  }
+  form.input button:disabled, .quick button:disabled { opacity: .5; cursor: default; }
+
+  /* 모달 */
+  dialog { border: 0; border-radius: 20px; padding: 24px; width: min(92vw, 420px); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog h2 { margin: 0 0 12px; font-size: 20px; color: var(--orange-dark); }
+  dialog label { display: block; font-weight: 700; margin: 14px 0 6px; }
+  dialog input[type=password], dialog select, dialog textarea {
+    width: 100%; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; font-size: 15px; font-family: inherit;
+  }
+  dialog .hint { font-size: 13px; color: #8a6a4a; line-height: 1.5; margin-top: 8px; }
+  dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+  dialog .row button { border: 0; border-radius: 12px; padding: 10px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .primary { background: var(--orange); color: #fff; }
+  .ghost { background: #f1ece5; color: var(--text); }
+
+  @media (max-width: 420px) {
+    header h1 { font-size: 22px; }
+    .head-btn { padding: 10px; font-size: 15px; }
+    .msg { font-size: 17px; }
+    .quick button { font-size: 16px; }
+    form.input input { height: 60px; font-size: 17px; }
+    form.input button { width: 96px; font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <button class="back" aria-label="뒤로" onclick="history.back()">‹</button>
+    <div class="logo">😎</div>
+    <h1>오름 길잡이 🌞</h1>
+    <button class="head-btn" id="prefBtn">내 취향</button>
+  </header>
+
+  <details class="about">
+    <summary>이 에이전트는요</summary>
+    <p>제주 오름을 추천하고 안내하는 AI 길잡이예요. 동행·체력·날씨·시간대에 맞춰 오를 만한 오름과 코스, 소요 시간, 주의할 점을 알려드려요. '내 취향'에 정보를 넣어두면 더 잘 맞춰 드려요.</p>
+  </details>
+
+  <div id="chat">
+    <div class="msg bot">안녕하세요! 어떤 오름이 궁금해요?</div>
+  </div>
+
+  <div class="quick">
+    <button data-q="지금 제주 오름 다니기 좋은 날씨인지, 계절·시간대 기준으로 알려줘">현재 오름<br>날씨</button>
+    <button data-q="비 와도 괜찮은 오름 추천해줘">비 와도<br>괜찮은 오름</button>
+    <button data-q="오름 오르기 좋은 시간대 추천해줘 (일출·일몰 포함)">시간 추천</button>
+  </div>
+
+  <form class="input" id="form">
+    <input id="text" placeholder="메세지 입력" autocomplete="off">
+    <button type="submit" id="send">보내기</button>
+  </form>
+</div>
+
+<!-- 내 취향 모달 -->
+<dialog id="prefDlg">
+  <h2>내 취향</h2>
+  <label for="pWho">누구와 가나요?</label>
+  <select id="pWho">
+    <option value="">선택 안 함</option>
+    <option>혼자</option><option>친구</option><option>연인</option>
+    <option>아이 동반 가족</option><option>50대 이상 부모님</option>
+  </select>
+  <label for="pLevel">체력·난이도</label>
+  <select id="pLevel">
+    <option value="">선택 안 함</option>
+    <option>쉬움 (30분 이내 산책)</option>
+    <option>보통 (1시간 내외)</option>
+    <option>도전 (가파른 오름도 OK)</option>
+  </select>
+  <label for="pMove">이동 수단</label>
+  <select id="pMove">
+    <option value="">선택 안 함</option>
+    <option>렌터카</option><option>대중교통</option>
+  </select>
+  <label for="pEtc">기타 (선호 지역, 피하고 싶은 것 등)</label>
+  <textarea id="pEtc" rows="2" placeholder="예: 동쪽 위주, 사람 많은 곳 싫음"></textarea>
+  <div class="row">
+    <button class="ghost" id="prefCancel">닫기</button>
+    <button class="primary" id="prefSave">저장</button>
+  </div>
+</dialog>
+
+<script>
+  // ===== 설정 =====
+  // API 키는 같은 폴더의 .env 파일에서 ABC=sk-ant-... 한 줄을 fetch 로 읽어 온다 (실습용)
+  const MODEL = "claude-opus-5-5";
+  const API_URL = "https://api.anthropic.com/v1/messages";
+  const PREF_STORE = "oreum.prefs";
+
+  const SYSTEM_PROMPT = `너는 제주도 오름 전문 길잡이 '오름 길잡이'야.
+- 사용자의 동행, 체력, 날씨, 시간대에 맞춰 제주 오름을 추천하고 안내한다.
+- 추천할 때는 오름 이름, 위치(지역), 난이도, 정상까지 소요 시간, 추천 이유, 주의할 점(주차·화장실·경사·바람)을 짧게 정리한다.
+- 실시간 날씨나 통제 정보는 알 수 없으니, 필요하면 기상청·오름 통제 공지 확인을 권한다.
+- 휴식년제 등으로 출입이 제한되는 오름은 그 사실을 알린다.
+- 모바일 채팅 화면이므로 마크다운 표·제목 없이, 짧은 문단과 '•' 목록으로 친근하게 답한다.`;
+
+  let ABC = null; // .env 의 ABC 값 (API 키)
+  async function loadKey() {
+    if (ABC) return ABC;
+    const res = await fetch(".env", { cache: "no-store" });
+    if (!res.ok) throw new Error(".env 파일을 읽지 못했어요. index.html 과 같은 폴더에 있는지 확인해주세요.");
+    const line = (await res.text()).split(/\r?\n/).find((l) => /^\s*ABC\s*=/.test(l));
+    ABC = line ? line.split("=").slice(1).join("=").trim().replace(/^["']|["']$/g, "") : "";
+    if (!ABC) throw new Error(".env 에 ABC=sk-ant-... 줄이 없어요.");
+    return ABC;
+  }
+
+  // ===== 저장소 (사생활 모드 대비 try/catch) =====
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+    del(k) { try { localStorage.removeItem(k); } catch {} },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const chat = $("chat");
+  const history_ = []; // API 에 보내는 대화 기록 (Anthropic messages 형식)
+  let busy = false;
+
+  function addBubble(text, who, extra = "") {
+    const div = document.createElement("div");
+    div.className = `msg ${who} ${extra}`.trim();
+    div.textContent = text;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function prefsText() {
+    let p = {};
+    try { p = JSON.parse(store.get(PREF_STORE) || "{}"); } catch {}
+    const lines = [];
+    if (p.who) lines.push(`동행: ${p.who}`);
+    if (p.level) lines.push(`체력·난이도: ${p.level}`);
+    if (p.move) lines.push(`이동 수단: ${p.move}`);
+    if (p.etc) lines.push(`기타: ${p.etc}`);
+    return lines.length ? `\n\n[사용자 취향]\n${lines.join("\n")}` : "";
+  }
+
+  function setBusy(v) {
+    busy = v;
+    $("send").disabled = v;
+    document.querySelectorAll(".quick button").forEach((b) => (b.disabled = v));
+  }
+
+  async function ask(text) {
+    text = text.trim();
+    if (!text || busy) return;
+
+    addBubble(text, "user");
+    history_.push({ role: "user", content: text });
+    setBusy(true);
+
+    const typing = addBubble("", "bot");
+    typing.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": await loadKey(),
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "server-side-fallback-2026-07-01",
+          // 브라우저에서 직접 호출할 때 필요한 헤더 (실습용)
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          max_tokens: 4000,
+          system: SYSTEM_PROMPT + prefsText(),
+          messages: history_,
+          output_config: { effort: "low" }, // 채팅이라 가볍게
+          fallbacks: "default",              // 거절 시 서버가 다른 모델로 재시도
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 401) { ABC = null; throw new Error(".env 의 ABC 키가 올바르지 않아요."); }
+        throw new Error(`API 오류 (${res.status}): ${data?.error?.message || res.statusText}`);
+      }
+
+      if (data.stop_reason === "refusal") {
+        history_.pop();
+        typing.className = "msg bot error";
+        typing.textContent = "이 요청은 답변할 수 없어요. 다른 질문을 해주세요.";
+        return;
+      }
+
+      const answer = (data.content || [])
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim() || "(빈 응답)";
+
+      // 다음 턴을 위해 응답 블록을 그대로 기록에 붙인다
+      history_.push({ role: "assistant", content: data.content });
+      typing.textContent = answer;
+      if (data.stop_reason === "max_tokens") typing.textContent += "\n\n(답변이 길어 중간에 끊겼어요)";
+    } catch (err) {
+      history_.pop(); // 실패한 질문은 기록에서 제거
+      typing.className = "msg bot error";
+      typing.textContent = err instanceof TypeError
+        ? (location.protocol === "file:"
+            ? "파일을 더블클릭해서 열면 .env 를 읽을 수 없어요. VS Code Live Server 등으로 http:// 주소로 열어주세요."
+            : `연결에 실패했어요: ${err.message}`)
+        : err.message;
+    } finally {
+      setBusy(false);
+      chat.scrollTop = chat.scrollHeight;
+      $("text").focus();
+    }
+  }
+
+  // ===== 이벤트 =====
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = $("text").value;
+    $("text").value = "";
+    ask(v);
+  });
+  document.querySelectorAll(".quick button").forEach((b) =>
+    b.addEventListener("click", () => ask(b.dataset.q))
+  );
+
+  // 내 취향
+  $("prefBtn").onclick = () => {
+    let p = {};
+    try { p = JSON.parse(store.get(PREF_STORE) || "{}"); } catch {}
+    $("pWho").value = p.who || ""; $("pLevel").value = p.level || "";
+    $("pMove").value = p.move || ""; $("pEtc").value = p.etc || "";
+    $("prefDlg").showModal();
+  };
+  $("prefCancel").onclick = () => $("prefDlg").close();
+  $("prefSave").onclick = () => {
+    store.set(PREF_STORE, JSON.stringify({
+      who: $("pWho").value, level: $("pLevel").value,
+      move: $("pMove").value, etc: $("pEtc").value.trim(),
+    }));
+    $("prefDlg").close();
+    addBubble("취향을 저장했어요! 이제 거기에 맞춰 추천해 드릴게요.", "bot");
+  };
+</script>
+</body>
+</html>
