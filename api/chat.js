@@ -13,7 +13,7 @@ const SYSTEM_PROMPT = `너는 제주도 오름 전문 길잡이 '오름 길잡�
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST 만 가능해요." });
 
-  const key = process.env.ABC;
+  const key = process.env.QWER;
   if (!key) return res.status(500).json({ error: "Vercel 환경변수 ABC 가 설정되지 않았어요." });
 
   const { messages, prefs = "" } = req.body || {};
